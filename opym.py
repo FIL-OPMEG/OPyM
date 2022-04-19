@@ -42,7 +42,7 @@ def _convert_channel_info(chans):
        
         # create the channel information
         if chans['pos'][ii] is not None:
-            r0 = chans['pos'][ii].copy()
+            r0 = chans['pos'][ii].copy() # mm to m
             ez = chans['ori'][ii].copy()
             ex, ey = _get_plane_vectors(ez)
             ch['loc'] = np.concatenate([r0, ex, ey, ez])
@@ -55,7 +55,7 @@ def _convert_channel_info(chans):
         elif chans['type'][ii] == 'MEGREFMAG':
             nref += 1
             ch.update(logno=nref, coord_frame=FIFF.FIFFV_COORD_UNKNOWN,
-                      kind=FIFF.FIFFV_REF_MEG_CH, unit=FIFF.FIFF_UNIT_V,
+                      kind=FIFF.FIFFV_REF_MEG_CH, unit=FIFF.FIFF_UNIT_T,
                       coil_type=FIFF.FIFFV_COIL_QUSPIN_ZFOPM_MAG2)
         elif chans['type'][ii] == 'TRIG':
             nstim += 1

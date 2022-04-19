@@ -11,24 +11,32 @@ import matplotlib.pyplot as plt
 import os.path as op
 import tsv_handler as tsv
 import json
+import mne
 
 precision = 'single';
 
-match precision:
-    case 'single':
-        dt = '>f'
-    case 'double':
-        dt = '>d'
+if precision == 'single':
+    dt = '>f'
+else:
+    dt = '>d'
 
-data_root = op.abspath('C:/Users/goneill/Downloads/masters_22/data')
-bids_root = 'sub-001_ses-001_task-motor4way_run-001'
+data_root = op.abspath('D:\masters_example_data\data')
+data_bin = op.join(data_root,'sub-001_ses-001_task-motor4way_run-001_meg.bin')
+
+
 
 files = dict();
-files['bin'] = op.join(data_root,bids_root + '_meg.bin')
-files['meg'] = op.join(data_root,bids_root + '_meg.json')
-files['chans'] = op.join(data_root,bids_root + '_channels.tsv')
-files['positions'] = op.join(data_root,bids_root + '_positions.tsv')
-files['coordsystem'] = op.join(data_root,bids_root + '_coordsystem.json')
+files['dir'] = op.dirname(data_bin)
+
+tmp = op.basename(data_bin)
+tmp = str.split(tmp,'_meg.bin')
+
+files['root'] = tmp[0];
+files['bin'] = op.join(data_root,files['root'] + '_meg.bin')
+files['meg'] = op.join(data_root,files['root'] + '_meg.json')
+files['chans'] = op.join(data_root,files['root'] + '_channels.tsv')
+files['positions'] = op.join(data_root,files['root'] + '_positions.tsv')
+files['coordsystem'] = op.join(data_root,files['root'] + '_coordsystem.json')
 
 data = np.fromfile(files['bin'],dt)
 chans = tsv._from_tsv(files['chans'])
@@ -57,7 +65,7 @@ chans['ori'] = [None] * nchans
 for ii in range(0,nlocs):
     idx = chans['name'].index(chanpos['name'][ii])
     tmp = np.array([chanpos['Px'][ii], chanpos['Py'][ii], chanpos['Pz'][ii]])
-    chans['pos'][idx] = tmp.astype(np.float64)/100
+    chans['pos'][idx] = tmp.astype(np.float64)/1000
     tmp = np.array([chanpos['Ox'][ii], chanpos['Oy'][ii], chanpos['Oz'][ii]])
     chans['ori'][idx] = tmp.astype(np.float64)
     
@@ -68,3 +76,10 @@ meg = json.load(fid)
 # chans = 
 
 info = _compose_meas_info(meg,chans)
+
+raw = mne.io.RawArray(data.transpose(),info)
+
+data = raw[22,0:-1]
+plt.plot(data[1],data[0].T)
+
+mne.io.read_raw_ctf
