@@ -6,9 +6,13 @@ Created on Wed Apr 13 13:29:53 2022
 """
 
 import numpy as np
+from collections import OrderedDict
+
 from mne.io.constants import FIFF
 from mne.io.meas_info import _empty_info
 from mne.io.write import get_new_file_id
+
+
 
 def _get_plane_vectors(ez):
     """Get two orthogonal vectors orthogonal to ez (ez will be modified)."""
@@ -87,3 +91,33 @@ def _read_bad_channels(chans):
             bads.append(chans['name'][ii])
     return bads
                     
+def _from_tsv(fname, dtypes=None):
+    """Read a tsv file into an OrderedDict.
+    Parameters
+    ----------
+    fname : str
+        Path to the file being loaded.
+    dtypes : list, optional
+        List of types to cast the values loaded as. This is specified column by
+        column.
+        Defaults to None. In this case all the data is loaded as strings.
+    Returns
+    -------
+    data_dict : collections.OrderedDict
+        Keys are the column names, and values are the column data.
+    """
+    data = np.loadtxt(fname, dtype=str, delimiter='\t', ndmin=2,
+                      comments=None, encoding='utf-8-sig')
+    column_names = data[0, :]
+    info = data[1:, :]
+    data_dict = OrderedDict()
+    if dtypes is None:
+        dtypes = [str] * info.shape[1]
+    if not isinstance(dtypes, (list, tuple)):
+        dtypes = [dtypes] * info.shape[1]
+    if not len(dtypes) == info.shape[1]:
+        raise ValueError('dtypes length mismatch. Provided: {0}, '
+                         'Expected: {1}'.format(len(dtypes), info.shape[1]))
+    for i, name in enumerate(column_names):
+        data_dict[name] = info[:, i].astype(dtypes[i]).tolist()
+    return data_dict

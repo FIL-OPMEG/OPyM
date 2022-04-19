@@ -5,11 +5,10 @@ Created on Tue Apr 12 13:32:23 2022
 @author: goneill
 """
 
-from opym import _compose_meas_info
+from opym import _compose_meas_info, _from_tsv
 import numpy as np
 import matplotlib.pyplot as plt
 import os.path as op
-import tsv_handler as tsv
 import json
 import mne
 
@@ -39,8 +38,8 @@ files['positions'] = op.join(data_root,files['root'] + '_positions.tsv')
 files['coordsystem'] = op.join(data_root,files['root'] + '_coordsystem.json')
 
 data = np.fromfile(files['bin'],dt)
-chans = tsv._from_tsv(files['chans'])
-chanpos = tsv._from_tsv(files['positions'])
+chans = _from_tsv(files['chans'])
+chanpos = _from_tsv(files['positions'])
 nchans = len(chans['name'])
 nlocs = len(chanpos['name'])
 nsamples = len(data)
