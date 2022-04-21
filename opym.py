@@ -5,13 +5,74 @@ Created on Wed Apr 13 13:29:53 2022
 @author: goneill
 """
 
+import json
 import numpy as np
+import os.path as op
 from collections import OrderedDict
 
 from mne.io.constants import FIFF
 from mne.io.meas_info import _empty_info
 from mne.io.write import get_new_file_id
+from mne.io.base import BaseRaw
+from mne.io.utils import _read_segments_file
 
+def read_raw_ucl(binfile, precision='single', preload=False):
+
+    return RawUCL(binfile, precision=precision, preload=preload)
+
+class RawUCL(BaseRaw):
+    def __init__(self, binfile, precision='single', preload=False):
+        
+        if precision == 'single':
+            dt = '>f'
+            bps = 4
+        else:
+            dt = '>d'
+            bps = 8
+            
+       
+        sample_info = dict()
+        sample_info['dt'] = dt
+        sample_info['bps'] = bps
+        
+        files = _get_file_names(binfile)
+    
+        chans = _from_tsv(files['chans'])
+        chanpos = _from_tsv(files['positions'])
+        nchans = len(chans['name'])
+        nlocs = len(chanpos['name'])
+        nsamples = _determine_nsamples(files['bin'], nchans, precision) - 1
+        sample_info['nsamples'] = nsamples
+        
+        raw_extras = list()
+        raw_extras.append(sample_info)
+        
+        chans['pos'] = [None] * nchans
+        chans['ori'] = [None] * nchans       
+        
+        for ii in range(0,nlocs):
+            idx = chans['name'].index(chanpos['name'][ii])
+            tmp = np.array([chanpos['Px'][ii], chanpos['Py'][ii], chanpos['Pz'][ii]])
+            chans['pos'][idx] = tmp.astype(np.float64)
+            tmp = np.array([chanpos['Ox'][ii], chanpos['Oy'][ii], chanpos['Oz'][ii]])
+            chans['ori'][idx] = tmp.astype(np.float64)
+            
+        fid = open(files['meg'],'r')
+        meg = json.load(fid)
+        info = _compose_meas_info(meg, chans)
+        
+        
+        
+        super(RawUCL, self).__init__(
+            info, preload, filenames=[files['bin']],raw_extras=raw_extras,
+            last_samps=[nsamples], orig_format=dt)
+        
+    def _read_segment_file(self, data, idx, fi, start, stop, cals, mult):
+        """Read a chunk of raw data."""
+        si = self._raw_extras[fi]
+        _read_segments_file(
+            self, data, idx, fi, start, stop, cals, mult, dtype=si['dt'])
+    
 
 
 def _get_plane_vectors(ez):
@@ -36,6 +97,9 @@ def _get_plane_vectors(ez):
 
 def _convert_channel_info(chans):
     nmeg = nstim = nmisc = nref = 0
+    
+    units, sf = _determine_position_units(chans['pos'])
+    
     chs = list()
     for ii in range(0,len(chans['name'])):
         ch = dict(scanno=ii + 1, range=1., cal=1., loc=np.full(12, np.nan),
@@ -46,7 +110,7 @@ def _convert_channel_info(chans):
        
         # create the channel information
         if chans['pos'][ii] is not None:
-            r0 = chans['pos'][ii].copy() # mm to m
+            r0 = chans['pos'][ii].copy()/sf # mm to m
             ez = chans['ori'][ii].copy()
             ex, ey = _get_plane_vectors(ez)
             ch['loc'] = np.concatenate([r0, ex, ey, ez])
@@ -69,6 +133,21 @@ def _convert_channel_info(chans):
             nmisc += 1
             ch.update(logno=nmisc, coord_frame=FIFF.FIFFV_COORD_UNKNOWN,
                       kind=FIFF.FIFFV_MISC_CH, unit=FIFF.FIFF_UNIT_NONE)
+            
+            
+        # set the calibration based on the units - MNE expects T units for meg
+        # and V for eeg
+        if chans['units'][ii] == 'fT':
+            ch.update(cal=1e-15)
+        elif chans['units'][ii] == 'pT':
+            ch.update(cal=1e-12)
+        elif chans['units'][ii] == 'nT':
+            ch.update(cal=1e-9)
+        elif chans['units'][ii] == 'mV':
+            ch.update(cal=1e3)
+        elif chans['units'][ii] == 'uV':
+                ch.update(cal=1e6)
+
     return chs
 
 def _compose_meas_info(meg,chans):
@@ -83,6 +162,15 @@ def _compose_meas_info(meg,chans):
     info._unlocked = False
     info._update_redundant()
     return info
+
+def _determine_nsamples(bin_fname,nchans,precision):
+    bsize = op.getsize(bin_fname)
+    if precision == 'single':
+        bps = 4
+    else:
+        bps = 8
+    nsamples = int(bsize/(nchans*bps))
+    return nsamples
 
 def _read_bad_channels(chans):
     bads = list()
@@ -121,3 +209,55 @@ def _from_tsv(fname, dtypes=None):
     for i, name in enumerate(column_names):
         data_dict[name] = info[:, i].astype(dtypes[i]).tolist()
     return data_dict
+
+def _get_file_names(binfile):
+    
+    files = dict();
+    files['dir'] = op.dirname(binfile)
+
+    tmp = op.basename(binfile)
+    tmp = str.split(tmp,'_meg.bin')
+
+    files['root'] = tmp[0];
+    files['bin'] = op.join(files['dir'],files['root'] + '_meg.bin')
+    files['meg'] = op.join(files['dir'],files['root'] + '_meg.json')
+    files['chans'] = op.join(files['dir'],files['root'] + '_channels.tsv')
+    files['positions'] = op.join(files['dir'],files['root'] + '_positions.tsv')
+    files['coordsystem'] = op.join(files['dir'],files['root'] + '_coordsystem.json')
+    
+    return files
+
+def _determine_position_units(pos):
+    
+    # get rid of None elements
+    nppos = np.empty((0,3))
+    for ii in range(0,len(pos)):
+        if pos[ii] is not None:
+            nppos = np.vstack((nppos, pos[ii]))
+    
+    idrange = np.empty(shape=(0,3))        
+    for ii in range(0,3):
+        q90, q10 = np.percentile(nppos[:,ii], [90 ,10])
+        idrange= np.append(idrange,q90 - q10)
+        
+    siz = np.linalg.norm(idrange)
+    
+    if siz >= 0.050 and siz < 0.500:
+        unit = 'm'
+        sf = 1;
+    elif siz >= 0.50 and siz < 5:
+        unit = 'dm'
+        sf = 10;
+    elif siz >= 5 and siz < 50:
+        unit = 'cm'
+        sf = 100;
+    elif siz >= 50 and siz < 500:
+        unit = 'mm'
+        sf = 1000;
+    else:
+        unit = 'unknown'
+        sf = 1;
+        
+    return unit, sf
+    
+    
