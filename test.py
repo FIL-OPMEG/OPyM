@@ -21,6 +21,13 @@ raw = read_raw_ucl(data_bin)
 a = raw[20,:]
 plt.plot(a[1],a[0].transpose())
 
+ch = list()
+
+for ii in range(0,len(raw.info['ch_names'])):
+    if raw.info['ch_names'][ii][3:5] == 'A6':
+       ch.append(raw.info['ch_names'][ii])
+    
+
 
 # ctf_ds = 'D:\\barry_memory_data\\noise\\150717_Noise_20170515_01.ds'
 

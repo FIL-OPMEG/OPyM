@@ -15,6 +15,9 @@ from mne.io.meas_info import _empty_info
 from mne.io.write import get_new_file_id
 from mne.io.base import BaseRaw
 from mne.io.utils import _read_segments_file
+from mne.io._digitization import _make_dig_points
+from mne.transforms import get_ras_to_neuromag_trans, apply_trans, Transform
+
 
 def read_raw_ucl(binfile, precision='single', preload=False):
 
@@ -59,13 +62,53 @@ class RawUCL(BaseRaw):
             
         fid = open(files['meg'],'r')
         meg = json.load(fid)
+        fid.close()
         info = _compose_meas_info(meg, chans)
-        
-        
         
         super(RawUCL, self).__init__(
             info, preload, filenames=[files['bin']],raw_extras=raw_extras,
             last_samps=[nsamples], orig_format=dt)
+        
+        if op.exists(files['coordsystem']):
+            fid = open(files['coordsystem'],'r')
+            csys = json.load(fid)
+            fid.close()
+            hc = csys['HeadCoilCoordinates']
+            
+            for key in hc:
+                if key == 'lpa' or key == 'LPA':
+                    lpa = np.asarray(hc[key])
+                elif key == 'rpa' or key == 'RPA':
+                    rpa = np.asarray(hc[key])
+                elif key == 'nas' or key == 'NAS' or key == 'nasion':
+                    nas = np.asarray(hc[key])
+                    
+            siz = np.linalg.norm(nas - rpa)
+            unit, sf = _size2units(siz) 
+            lpa/=sf
+            rpa/=sf
+            nas/=sf
+            
+            # t = get_ras_to_neuromag_trans(nas, lpa, rpa)
+            # with self.info._unlock():
+            #     self.info['dev_head_t'] = \
+            #         Transform(FIFF.FIFFV_COORD_DEVICE,
+            #                   FIFF.FIFFV_COORD_HEAD, t)
+
+            # # transform fiducial points
+            # nas = apply_trans(t, nas)
+            # lpa = apply_trans(t, lpa)
+            # rpa = apply_trans(t, rpa)
+            
+            with self.info._unlock():
+                self.info['dig'] = _make_dig_points(nasion=nas,
+                                                    lpa=lpa,
+                                                    rpa=rpa)
+                
+                
+            
+            
+                
         
     def _read_segment_file(self, data, idx, fi, start, stop, cals, mult):
         """Read a chunk of raw data."""
@@ -241,6 +284,13 @@ def _determine_position_units(pos):
         idrange= np.append(idrange,q90 - q10)
         
     siz = np.linalg.norm(idrange)
+    
+    unit, sf = _size2units(siz)
+    
+    return unit, sf
+   
+    
+def _size2units(siz):
     
     if siz >= 0.050 and siz < 0.500:
         unit = 'm'
