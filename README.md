@@ -52,6 +52,6 @@ To import and use the funciton.
 
 from opym import read_raw_cerca
 
-raw = read_raw_cerca('/path/to/data_folder/[FILE_PREFIX]_meg.bin')
+raw = read_raw_cerca('/path/to/data_folder/[FILE_PREFIX].cMEG')
 
 ```
