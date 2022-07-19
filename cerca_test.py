@@ -89,7 +89,7 @@ from opym import read_raw_cerca
 
 
 data_root = op.abspath('D:\\20220623_095714_cMEG_Data')
-data_bin = op.join(data_root,'20220623_095714.cMEG')
+data_bin = op.join(data_root,'truncated.cMEG')
 
 rawC = read_raw_cerca(data_bin)
 a = rawC[76,:]

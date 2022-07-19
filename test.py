@@ -5,90 +5,54 @@ Created on Tue Apr 12 13:32:23 2022
 @author: goneill
 """
 
+import mne
 from opym import read_raw_ucl
-import matplotlib.pyplot as plt
 import os.path as op
-
-
-precision = 'single';
-
+import copy
 
 
 data_root = op.abspath('D:\masters_example_data\data')
 data_bin = op.join(data_root,'sub-001_ses-001_task-motor4way_run-001_meg.bin')
 
+opm_example_path = mne.datasets.opm.data_path()
+coil_def_fname = op.join(opm_example_path, 'MEG', 'OPM', 'coil_def.dat')
+
 raw = read_raw_ucl(data_bin)
-a = raw[20,:]
-plt.plot(a[1],a[0].transpose())
+info = raw.info;
 
-ch = list()
+# Lets have a look at trying to align data in the source space
 
-for ii in range(0,len(raw.info['ch_names'])):
-    if raw.info['ch_names'][ii][3:5] == 'A6':
-       ch.append(raw.info['ch_names'][ii])
-    
+subjects_dir = op.abspath('D:\\recons')
+subject = 'masters-22-001'
+# fs_dir = mne.datasets.fetch_fsaverage(verbose=True)
+# subjects_dir = op.dirname(fs_dir)
+# subject = 'fsaverage'
+
+# set up the coreg object (this doesnt initialise it)
+dig = copy.deepcopy(info['dig'])
+
+# hack to shift by CRAS
+lol = mne.read_surface(op.join(subjects_dir,subject,'bem','watershed',subject+'_brain_surface'),read_metadata=True)
+cras = lol[2]['cras']/1000
+for ii in range(3):
+    dig[ii]['r']=dig[ii]['r']-cras
+
+coreg =  mne.coreg.Coregistration(info, subject, subjects_dir,fiducials=dig)
+
+# first alignment
+plot_kwargs = dict(subject=subject, subjects_dir=subjects_dir, dig=True, eeg=[],
+                   meg='sensors', show_axes=True,
+                   coord_frame='mri',mri_fiducials='estimated') #debugging with estimated
+view_kwargs = dict(azimuth=45, elevation=90, distance=0.6,
+                   focalpoint=(0., 0., 0.))
 
 
-# ctf_ds = 'D:\\barry_memory_data\\noise\\150717_Noise_20170515_01.ds'
+# do the initial fit with the fiducials
+coreg.fit_fiducials(verbose=True)
+# do the initial fit with the 
 
-# raw = mne.io.read_raw(ctf_ds)
 
 
-# files = dict();
-# files['dir'] = op.dirname(data_bin)
 
-# tmp = op.basename(data_bin)
-# tmp = str.split(tmp,'_meg.bin')
-
-# files['root'] = tmp[0];
-# files['bin'] = op.join(data_root,files['root'] + '_meg.bin')
-# files['meg'] = op.join(data_root,files['root'] + '_meg.json')
-# files['chans'] = op.join(data_root,files['root'] + '_channels.tsv')
-# files['positions'] = op.join(data_root,files['root'] + '_positions.tsv')
-# files['coordsystem'] = op.join(data_root,files['root'] + '_coordsystem.json')
-
-# data = np.fromfile(files['bin'],dt)
-# chans = _from_tsv(files['chans'])
-# chanpos = _from_tsv(files['positions'])
-# nchans = len(chans['name'])
-# nlocs = len(chanpos['name'])
-# nsamples = len(data)
-
-# data.shape = (int(nsamples/nchans),nchans)
-
-# # add some additional channel information
-# # chans['type_mne'] = list()
-# # for ii in range(0,nchans):
-# #     match chans['type'][ii]:
-# #         case 'MEGMAG':
-# #             chans['type_mne'].append('mag')
-# #         case 'MEGREFMAG':
-# #             chans['type_mne'].append('ref_meg')
-# #         case 'TRIG':
-# #             chans['type_mne'].append('misc')
-# #         case _:
-# #             chans['type_mne'].append('misc')
-
-# chans['pos'] = [None] * nchans
-# chans['ori'] = [None] * nchans
-# for ii in range(0,nlocs):
-#     idx = chans['name'].index(chanpos['name'][ii])
-#     tmp = np.array([chanpos['Px'][ii], chanpos['Py'][ii], chanpos['Pz'][ii]])
-#     chans['pos'][idx] = tmp.astype(np.float64)/1000
-#     tmp = np.array([chanpos['Ox'][ii], chanpos['Oy'][ii], chanpos['Oz'][ii]])
-#     chans['ori'][idx] = tmp.astype(np.float64)
-    
-# fid = open(files['meg'],'r')
-# meg = json.load(fid)
-# #fid = open(files['coordsystem'],'r')
-# #coord = json.load(fid)
-# # chans = 
-
-# info = _compose_meas_info(meg,chans)
-
-# raw = mne.io.RawArray(data.transpose(),info)
-
-# data = raw[22,0:-1]
-# plt.plot(data[1],data[0].T)
-
-# mne.io.read_raw_ctf
+fig = mne.viz.plot_alignment(info, trans=coreg.trans, **plot_kwargs)
+print(coreg.trans)

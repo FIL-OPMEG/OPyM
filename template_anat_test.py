@@ -43,3 +43,4 @@ fig = mne.viz.plot_alignment(info, trans=coreg.trans, **plot_kwargs)
 
 coreg.fit_fiducials(verbose=True)
 fig = mne.viz.plot_alignment(info, trans=coreg.trans, **plot_kwargs)
+

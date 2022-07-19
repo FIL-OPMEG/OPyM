@@ -9,6 +9,7 @@ import json
 import numpy as np
 import os.path as op
 from collections import OrderedDict
+from copy import deepcopy
 
 from mne.io.constants import FIFF
 from mne.io.meas_info import _empty_info
@@ -246,13 +247,69 @@ def _convert_channel_info(chans):
 
     return chs
 
+def _refine_sensor_orientation(chanin):
+    # the ex and ey elements from _convert_channel_info were randomly oriented
+    # but it doesnt have to be this way, we can use (if available) the
+    # orientation information from mulit-axis recordings to refine this.
+    # THIS NEEDS SOME WORK TO MAKE BULLETPROOF
+    print('refining sensor orientations')
+    chanout = deepcopy(chanin)
+    tmpname = list()
+    for ii in range(len(chanin)):
+        tmpname.append(chanin[ii]['ch_name'])
+    
+    for ii in range(len(chanin)):
+        tmploc = deepcopy(chanin[ii]['loc']);
+        tmploc = tmploc.reshape(3,4,order='F');
+        if np.isnan(tmploc.sum()) == False:
+            target = _guess_other_chan_axis(tmpname, ii)
+            if np.isnan(target) == False:
+                targetloc = deepcopy(chanin[target]['loc']);
+                if np.isnan(targetloc.sum()) == False:
+                    targetloc = targetloc.reshape(3,4,order='F');
+                    tmploc[:,2] = targetloc[:,3]
+                    tmploc[:,1] = np.cross(tmploc[:,2],tmploc[:,3])
+                    chanout[ii]['loc'] = tmploc.reshape(12,order='F')
+                    
+        
+    return chanout
+
+def _guess_other_chan_axis(tmpname,seedID):
+    # mad script which tries to guess the name of another channel which is
+    # from the same sensor, but another axis
+    targetID = np.NAN
+    
+    # see if its using the old RAD/TAN convention first
+    if tmpname[seedID][-3:] == 'RAD':
+        prefix1 = 'RAD'
+        prefix2 = 'TAN'
+    elif tmpname[seedID][-3:] == 'TAN':
+        prefix1 = 'TAN'
+        prefix2 = 'RAD'
+        
+    targetName = tmpname[seedID][:-len(prefix1)] + prefix2
+    
+    # iterate through loop to find target, stop when found
+    hit = False;
+    ii = 0;
+    while (ii < len(tmpname)) and (hit == False):
+        if targetName == tmpname[ii]:
+            targetID = ii;
+            hit = True
+        ii += 1
+    
+    return targetID
+
+
+
 def _compose_meas_info(meg,chans):
     """Create info structure"""
     info = _empty_info(meg['SamplingFrequency'])
     
     # Collect all the necessary data from the structures read
     info['meas_id'] = get_new_file_id()
-    info['chs'] = _convert_channel_info(chans)
+    tmp = _convert_channel_info(chans)
+    info['chs'] = _refine_sensor_orientation(tmp)
     info['line_freq'] = meg['PowerLineFrequency']
     info['bads'] = _read_bad_channels(chans)
     info._unlocked = False
@@ -424,6 +481,7 @@ def _cerca_convert_channel_info(chans,cal):
                       kind=FIFF.FIFFV_MEG_CH, unit=FIFF.FIFF_UNIT_T,
                       coil_type=FIFF.FIFFV_COIL_QUSPIN_ZFOPM_MAG2,
                       cal=cal)
+
       
     return chs
     
