@@ -87,23 +87,27 @@ class RawUCL(BaseRaw):
             rpa/=sf
             nas/=sf
             
-            # t = get_ras_to_neuromag_trans(nas, lpa, rpa)
-            # with self.info._unlock():
-            #     self.info['dev_head_t'] = \
-            #         Transform(FIFF.FIFFV_COORD_DEVICE,
-            #                   FIFF.FIFFV_COORD_HEAD, t)
+            t = get_ras_to_neuromag_trans(nas, lpa, rpa)
 
-            # # transform fiducial points
-            # nas = apply_trans(t, nas)
-            # lpa = apply_trans(t, lpa)
-            # rpa = apply_trans(t, rpa)
+            # transform fiducial points
+            nas = apply_trans(t, nas)
+            lpa = apply_trans(t, lpa)
+            rpa = apply_trans(t, rpa)
             
             with self.info._unlock():
                 self.info['dig'] = _make_dig_points(nasion=nas,
                                                     lpa=lpa,
-                                                    rpa=rpa)
+                                                    rpa=rpa,
+                                                    coord_frame='meg')
+        else:
+            print('no fiducials found, likely to cause problems later!')
+            t = np.eye(4)
+        
+        with self.info._unlock():
+            self.info['dev_head_t'] = \
+                Transform(FIFF.FIFFV_COORD_DEVICE,
+                          FIFF.FIFFV_COORD_HEAD, t)
                 
-         
     def _read_segment_file(self, data, idx, fi, start, stop, cals, mult):
         """Read a chunk of raw data."""
         si = self._raw_extras[fi]
