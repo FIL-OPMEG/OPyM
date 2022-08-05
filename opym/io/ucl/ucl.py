@@ -1,15 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Apr 13 13:29:53 2022
-
-@author: goneill
-"""
-
 import json
 import numpy as np
 import os.path as op
 from collections import OrderedDict
-from copy import deepcopy
 
 from mne.io.constants import FIFF
 from mne.io.meas_info import _empty_info
@@ -18,66 +10,11 @@ from mne.io.base import BaseRaw
 from mne.io.utils import _read_segments_file
 from mne.io._digitization import _make_dig_points
 from mne.transforms import get_ras_to_neuromag_trans, apply_trans, Transform
+from mne.utils import warn
+
+from ..utils import _refine_sensor_orientation
 
 
-def read_raw_cerca(binfile):
-    return RawCerca(binfile)
-
-class RawCerca(BaseRaw):
-    def __init__(self, binfile):
-        
-        Adim_conv = np.array((2**32, 2**16, 2**8, 1))
-
-        nbytes = op.getsize(binfile)
-
-        # determine size of each block and how many there might be
-        blockhdr = np.fromfile(binfile,dtype='>u1',count=8)
-        blockhdr = blockhdr.reshape((2,4))
-        blockdim = Adim_conv @ blockhdr.T
-        nelements = 1 + blockdim.prod()
-        bytesperblock = 8*nelements
-        nblocks = nbytes/bytesperblock
-
-        # magic number = blockhdr bytes cast as a float
-        magic = np.fromfile(binfile,dtype='>d',offset=0,count=1)
-
-        dat = np.zeros((blockdim[0],blockdim[1],int(nblocks)))
-
-        for ii in range(int(nblocks)):
-            tmp = np.fromfile(binfile,dtype='>d',offset=ii*bytesperblock,count=nelements)
-            assert tmp[0]==magic
-            tmp = np.delete(tmp,0,0)
-            tmp = tmp.reshape(blockdim)
-            dat[:,:,ii] = tmp.copy();
-
-        dat = dat.reshape(blockdim[0],-1,order='F')
-        
-        infofile = op.splitext(binfile)[0] + '_SessionInfo.txt'
-        
-        sens = _cerca_get_sensor_names(infofile)
-        cal = _cerca_get_cal(infofile)
-
-        """Create info structure"""
-        info = _empty_info(_cerca_get_fsample(dat))
-
-        # Collect all the necessary data from the structures read
-        info['meas_id'] = get_new_file_id()
-        info['chs'] = _cerca_convert_channel_info(sens, cal)
-        info['line_freq'] = 50.0
-        info._unlocked = False
-        info._update_redundant()
-        
-        # purge time channel at this point
-        dat = np.delete(dat,0,0)
-        # rescale as this isnt working automatically ATM
-        dat = _cerca_rescale_data(dat, info['chs'])
-        
-        
-        super(RawCerca, self).__init__(
-            info, preload=dat, last_samps=dat.shape[1]-1)     
-        
-        
-    
 def read_raw_ucl(binfile, precision='single', preload=False):
     return RawUCL(binfile, precision=precision, preload=preload)
 
@@ -140,6 +77,9 @@ class RawUCL(BaseRaw):
                     rpa = np.asarray(hc[key])
                 elif key == 'nas' or key == 'NAS' or key == 'nasion':
                     nas = np.asarray(hc[key])
+                else:
+                    warn(key + ' is not a valid fiducial name!')
+                        
                     
             siz = np.linalg.norm(nas - rpa)
             unit, sf = _size2units(siz) 
@@ -246,61 +186,6 @@ def _convert_channel_info(chans):
                 ch.update(cal=1e6)
 
     return chs
-
-def _refine_sensor_orientation(chanin):
-    # the ex and ey elements from _convert_channel_info were randomly oriented
-    # but it doesnt have to be this way, we can use (if available) the
-    # orientation information from mulit-axis recordings to refine this.
-    # THIS NEEDS SOME WORK TO MAKE BULLETPROOF
-    print('refining sensor orientations')
-    chanout = deepcopy(chanin)
-    tmpname = list()
-    for ii in range(len(chanin)):
-        tmpname.append(chanin[ii]['ch_name'])
-    
-    for ii in range(len(chanin)):
-        tmploc = deepcopy(chanin[ii]['loc']);
-        tmploc = tmploc.reshape(3,4,order='F');
-        if np.isnan(tmploc.sum()) == False:
-            target = _guess_other_chan_axis(tmpname, ii)
-            if np.isnan(target) == False:
-                targetloc = deepcopy(chanin[target]['loc']);
-                if np.isnan(targetloc.sum()) == False:
-                    targetloc = targetloc.reshape(3,4,order='F');
-                    tmploc[:,2] = targetloc[:,3]
-                    tmploc[:,1] = np.cross(tmploc[:,2],tmploc[:,3])
-                    chanout[ii]['loc'] = tmploc.reshape(12,order='F')
-                    
-        
-    return chanout
-
-def _guess_other_chan_axis(tmpname,seedID):
-    # mad script which tries to guess the name of another channel which is
-    # from the same sensor, but another axis
-    targetID = np.NAN
-    
-    # see if its using the old RAD/TAN convention first
-    if tmpname[seedID][-3:] == 'RAD':
-        prefix1 = 'RAD'
-        prefix2 = 'TAN'
-    elif tmpname[seedID][-3:] == 'TAN':
-        prefix1 = 'TAN'
-        prefix2 = 'RAD'
-        
-    targetName = tmpname[seedID][:-len(prefix1)] + prefix2
-    
-    # iterate through loop to find target, stop when found
-    hit = False;
-    ii = 0;
-    while (ii < len(tmpname)) and (hit == False):
-        if targetName == tmpname[ii]:
-            targetID = ii;
-            hit = True
-        ii += 1
-    
-    return targetID
-
-
 
 def _compose_meas_info(meg,chans):
     """Create info structure"""
@@ -419,78 +304,3 @@ def _size2units(siz):
         sf = 1;
         
     return unit, sf
-
-
-def _cerca_get_sensor_names(data_info):
-    assert op.exists(data_info)
-    with open(data_info) as f:
-       txt_info = f.readlines()
-        
-    # find line with sensor names
-    for text in txt_info:
-        if 'Sensor Names' in text:
-            txt_sensors = text
-    
-    sensor_list = txt_sensors.split(',')
-    tmp = sensor_list[0]
-    tmp = tmp.split(':')
-    sensor_list[0] = tmp[1];
-    
-    for ii in range(len(sensor_list)):
-        sensor_list[ii] = sensor_list[ii].strip()
-    
-    return sensor_list
-
-def _cerca_get_fsample(dat):
-    fsample = round(1/(dat[0,1] - dat[0,0]))
-    return fsample
-
-def _cerca_get_cal(data_info):
-    assert op.exists(data_info)
-    with open(data_info) as f:
-        txt_info = f.readlines()
-        
-    # find line with sensor names
-    for text in txt_info:
-        if 'OPM Gain' in text:
-            txt_gain = text.split(':')[1]
-    gain = float(txt_gain.split('x')[0])    
-
-    # assuming data is converted from V to nT to T!
-    cal = 1e-9/(2.7*gain)
-    return cal
-
-def _cerca_convert_channel_info(chans,cal):
-    nmeg = nstim = 0
-        
-    chs = list()
-    for ii in range(0,len(chans)):
-        ch = dict(scanno=ii + 1, range=1., cal=1., loc=np.full(12, np.nan),
-                  unit_mul=FIFF.FIFF_UNITM_NONE, ch_name=chans[ii],
-                  coil_type=FIFF.FIFFV_COIL_NONE)    
-       
-        chs.append(ch)
-                    
-        if chans[ii][0:4] == 'Trig': # its a trigger!
-            nstim += 1
-            ch.update(logno=nstim, coord_frame=FIFF.FIFFV_COORD_UNKNOWN,
-                      kind=FIFF.FIFFV_STIM_CH, unit=FIFF.FIFF_UNIT_V)
-        else:                      # its a sensor!     
-            nmeg += 1
-            ch.update(logno=nmeg, coord_frame=FIFF.FIFFV_COORD_DEVICE,
-                      kind=FIFF.FIFFV_MEG_CH, unit=FIFF.FIFF_UNIT_T,
-                      coil_type=FIFF.FIFFV_COIL_QUSPIN_ZFOPM_MAG2,
-                      cal=cal)
-
-      
-    return chs
-    
-def _cerca_rescale_data(dat,chs):
-    
-    calmat = np.zeros((dat.shape[0],1))
-    
-    for ii in range(dat.shape[0]):
-        calmat[ii] = chs[ii]['cal']
-        
-    dat = calmat * dat
-    return dat
