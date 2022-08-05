@@ -12,7 +12,7 @@ from mne.io._digitization import _make_dig_points
 from mne.transforms import get_ras_to_neuromag_trans, apply_trans, Transform
 from mne.utils import warn
 
-from ..utils import _refine_sensor_orientation
+from .utils import _refine_sensor_orientation
 
 
 def read_raw_ucl(binfile, precision='single', preload=False):
