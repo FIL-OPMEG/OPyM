@@ -88,7 +88,7 @@ class RawUCL(BaseRaw):
             nas/=sf
             
             t = get_ras_to_neuromag_trans(nas, lpa, rpa)
-
+            
             # transform fiducial points
             nas = apply_trans(t, nas)
             lpa = apply_trans(t, lpa)
@@ -153,6 +153,7 @@ def _convert_channel_info(chans):
         if chans['pos'][ii] is not None:
             r0 = chans['pos'][ii].copy()/sf # mm to m
             ez = chans['ori'][ii].copy()
+            ez = ez/np.linalg.norm(ez)
             ex, ey = _get_plane_vectors(ez)
             ch['loc'] = np.concatenate([r0, ex, ey, ez])
             
