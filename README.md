@@ -25,7 +25,7 @@ To import and use the funciton.
 
 ```python
 
-from opym import read_raw_ucl
+from opym.io import read_raw_ucl
 
 raw = read_raw_ucl('/path/to/data_folder/[FILE_PREFIX]_meg.bin')
 
@@ -50,7 +50,7 @@ To import and use the funciton.
 
 ```python
 
-from opym import read_raw_cerca
+from opym.io import read_raw_cerca
 
 raw = read_raw_cerca('/path/to/data_folder/[FILE_PREFIX].cMEG')
 
