@@ -58,7 +58,7 @@ def _get_homogenous_field_basis(info):
     return basis, mag_ind
 
 def _get_chunks(raw,size=512):
-    # get blocks of data in a specific size (default 512), return the beginning
+    # get blocks of data in a specific size (default 512 MB), return the beginning
     # and end samples to do this
     chunk_samples = round(size*1e6/(8*len(raw.info['chs'])))
     
