@@ -7,7 +7,7 @@ Created on Tue Apr 12 13:32:23 2022
 
 import os.path as op
 import sys
-sys.path.append('..//') # Use this is running tests without a pip install!
+sys.path.append("D:\\Documents\\GitHub\\OPyM") # Use this is running tests without a pip install!
 
 import opym
 import mne
@@ -19,7 +19,7 @@ from mne.beamformer import make_lcmv, apply_lcmv
 # import the data
 data_root = op.abspath('D:\old_mn_data')
 data_bin = op.join(data_root,'sub-001_ses-001_task-mediannerve_run-001_meg.bin')
-raw = opym.io.read_raw_ucl(data_bin,preload=True)
+raw = opym.io.read_raw_ucl(data_bin)
 
 # Lets have a look at trying to align data in the source space
 subjects_dir = op.abspath('D:\\recons')
@@ -32,8 +32,8 @@ opym.coreg.check_datareg(raw.info, coreg=coreg, subject=subject, subjects_dir=su
 
 #%% HFC denoising - just the homogenous bit and filter
 
-# raw2 = opym.preproc.denoise_hfc(raw)
-raw2 = raw.copy()
+raw2 = opym.preproc.denoise_hfc(raw)
+# raw2 = raw.copy()
 raw2.filter(1, 80)
 
 
@@ -71,11 +71,11 @@ bem = mne.make_bem_solution(model)
 
 #%% solve forwards
 
-coil_def_fname = op.abspath('C:\\Users\\goneill\\mne_data\\MNE-OPM-data\\MEG\\OPM\\coil_def.dat')
+# coil_def_fname = op.abspath('C:\\Users\\goneill\\mne_data\\MNE-OPM-data\\MEG\\OPM\\coil_def.dat')
 
-with mne.use_coil_def(coil_def_fname):
-    fwd = mne.make_forward_solution(epochs.info, trans=coreg.trans, src=src, bem=bem,
-                                    meg=True, eeg=False, mindist=5.0, verbose=True)
+
+fwd = mne.make_forward_solution(epochs.info, trans=coreg.trans, src=src, bem=bem,
+                    meg=True, eeg=False, mindist=5.0, verbose=False)
     
 #%% Inverse time
 
@@ -92,7 +92,7 @@ vertno_max, time_max = stc.get_peak(hemi='rh')
 
 surfer_kwargs = dict(
     hemi='rh', subjects_dir=subjects_dir, surface='inflated',
-    clim=dict(kind='value', lims=[0, 0.5*stc.data.max(), stc.data.max()]), views='lateral',
+    clim=dict(kind='value', lims=[0.7*stc.data.max(), 0.85*stc.data.max(), stc.data.max()]), views='lateral',
     initial_time=time_max, time_unit='s', size=(800, 800), smoothing_steps=10)
 brain = stc.plot(**surfer_kwargs)
 

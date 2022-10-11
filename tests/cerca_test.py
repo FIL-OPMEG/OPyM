@@ -10,7 +10,11 @@ import numpy as np
 import os.path as op
 import matplotlib.pyplot as plt
 
-from opym import read_raw_cerca
+import sys
+sys.path.append('..//') # Use this is running tests without a pip install!
+
+import opym
+
 # from collections import OrderedDict
 
 # from mne.io.constants import FIFF
@@ -89,9 +93,9 @@ from opym import read_raw_cerca
 
 
 data_root = op.abspath('D:\\20220623_095714_cMEG_Data')
-data_bin = op.join(data_root,'truncated.cMEG')
+data_bin = op.join(data_root,'20220623_095714.cMEG')
 
-rawC = read_raw_cerca(data_bin)
+rawC = opym.io.read_raw_cerca(data_bin,slotnames=True)
 a = rawC[76,:]
 plt.plot(a[1],a[0].transpose())
 

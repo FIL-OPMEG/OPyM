@@ -110,6 +110,23 @@ def check_datareg(info,coreg=None,subject=None,subjects_dir=None,trans=None):
     else:
         fig = plot_alignment(_switch_coildef(info), trans=coreg.trans, **plot_kwargs)
     set_3d_view(fig, **view_kwargs)
+    
+    
+def plot_sens(info):
+        
+    # arguments for visualisation
+    plot_kwargs = dict(subject=None,  dig=False,
+                           eeg=[], meg='sensors', show_axes=True,
+                           coord_frame='meg')
+   
+        
+    view_kwargs = dict(azimuth=45, elevation=90, distance=0.6,
+                       focalpoint=(0., 0., 0.))
+    
+    fig = plot_alignment(_switch_coildef(info), **plot_kwargs)
+    set_3d_view(fig, **view_kwargs)
+        
+        
 
 def _switch_coildef(info,old=8002,new=7002):
     # update the info structure for a coil definition which is better

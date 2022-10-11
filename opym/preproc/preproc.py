@@ -7,6 +7,7 @@ Created on Mon Aug  8 14:44:00 2022
 
 from mne.io.pick import pick_types
 from mne.io.proj import Projection
+from mne.io.compensator import get_current_comp
 from numpy import zeros, isnan, roll, eye, arange, shape, array
 from scipy import linalg
 
@@ -33,6 +34,8 @@ def denoise_hfc(raw,L=1,copy=True):
     for start, stop in zip(starts, stops):
         orig_data = raw._data[mag_inds, start:stop]
         raw._data[mag_inds, start:stop] = M @ orig_data
+        
+        
         
     return raw
        
