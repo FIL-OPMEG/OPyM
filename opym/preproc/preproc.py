@@ -6,35 +6,67 @@ Created on Mon Aug  8 14:44:00 2022
 """
 
 from mne.io.pick import pick_types
-from mne.io.proj import Projection
+from mne.io.proj import Projection, activate_proj
 from mne.io.compensator import get_current_comp
-from numpy import zeros, isnan, roll, eye, arange, shape, array
+from numpy import zeros, isnan, roll, eye, arange, shape, array, newaxis
 from scipy import linalg
 
-def denoise_hfc(raw,L=1,copy=True):
+
+def denoise_hfc(raw,L=1,copy=True,method='old'):
     
     if L > 1:
-        raise ValueError('Higher harmonics than 1 are not yet supported')
+        raise ValueError('harmonic order higher than (L=1) not yet supported')
     else:
         basis, mag_inds = _get_homogenous_field_basis(raw.info)
 
-    # make the projector
-    nchans = len(mag_inds)
-    M = eye(nchans) - basis @ linalg.pinv(basis)
-       
-    if copy:
-        raw = raw.copy()
-        if not raw.preload:
-            print('HFC: Loading raw data from disk')
-            raw.load_data(verbose=False)
-        else:
-            print('HFC: Using loaded raw data')
-  
-    starts, stops = _get_chunks(raw)
-    for start, stop in zip(starts, stops):
-        orig_data = raw._data[mag_inds, start:stop]
-        raw._data[mag_inds, start:stop] = M @ orig_data
+
+
+    if method == 'old':
+        # make the projector
+        nchans = len(mag_inds)
+        M = eye(nchans) - basis @ linalg.pinv(basis)
+           
+        if copy:
+            raw = raw.copy()
+            if not raw.preload:
+                print('HFC: Loading raw data from disk')
+                raw.load_data(verbose=False)
+            else:
+                print('HFC: Using loaded raw data')
+      
+        starts, stops = _get_chunks(raw)
+        for start, stop in zip(starts, stops):
+            orig_data = raw._data[mag_inds, start:stop]
+            raw._data[mag_inds, start:stop] = M @ orig_data
+    else:
         
+        
+        if copy:
+            raw = raw.copy()
+            
+        l = (1,1,1)
+        m = (-1,0,1)
+        names = [];
+        projs = [];
+        for ii in mag_inds:
+            names.append(raw.info['chs'][ii]['ch_name'])
+        for ii in range(len(l)):
+            data = basis[:,ii]
+            proj_data = dict(col_names=names, row_names=None,
+                             data=data[newaxis,:], ncol =len(names), nrow=1)
+            this_desc = "HFC-l=%02d-m=%02d" % (l[ii], m[ii])
+            # logger.info("Adding projection: %s" % this_desc)
+            proj = Projection(
+                active=True, data=proj_data, desc=this_desc)
+            projs.append(proj)
+
+        raw.add_proj(projs, remove_existing=True)
+        # projs = raw.info['projs']
+        # projs = activate_proj(projs)
+        
+        # with raw.info._unlock():
+        #     raw.info['projs'] = activate_proj(raw.info['projs'])
+        raw.info.normalize_proj()
         
         
     return raw
