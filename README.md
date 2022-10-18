@@ -1,9 +1,18 @@
 # OPyM
-**work in progress**
+**experimental / work in progress / zero results guaranteed**
 
+A python library to read OPM data and perform some OPM-specific operations within the MNE-Python universe.
 
- Python library to read OPM data into MNE-Python
- 
+### Current functionality 
+
+Feature | Working | Tentative | In development | Not yet supported
+--- | --- | --- | --- | ---
+**Import:** FIL/UCL OPM Data | X | | |
+**Import:** Cerca Magnetics Data | | X | | 
+**Coreg:** FIL/UCL w/ Headcasts | X | | |
+**Coreg:** Cerca | | | | X
+**Preproc:** HFC ( $\ell =1$ )| | | X |
+**Preproc:** HFC ( $\ell >1$ )| | |  | X
  
 ### Usage - FIL BIDS format
 
