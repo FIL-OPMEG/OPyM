@@ -10,12 +10,17 @@ Feature | Working | Tentative | In development | Not yet supported
 **Import:** FIL/UCL OPM Data | X | | |
 **Import:** Cerca Magnetics Data | | X | | 
 **Import:** Optitrak Data | | X | | 
-**Coreg:** FIL/UCL w/ Headcasts | X | | |
+**Coreg:** FIL/UCL w/ Scannercasts | X | | |
 **Coreg:** Cerca | | | | X
-**Preproc:** HFC ( $\ell =1$ )| | | X |
-**Preproc:** HFC ( $\ell >1$ )| | |  | X
+**Preproc:** HFC* ( $\ell =1$ )| | | X |
+**Preproc:** HFC* ( $\ell >1$ )| | |  | X
 **Pkg:** Install with pip | | | | X
-### Usage - FIL BIDS format
+
+\* = Homogenous Field Correction ([Tierney et al., 2021](https://doi.org/10.1016/j.neuroimage.2021.118484))
+
+### Usage - FIL/UCL BIDS format
+
+This is specific to OPM data acquired at the [Wellcome Centre for Human Neuroimaging](https://www.fil.ion.ucl.ac.uk/).
 
 To use the import function, it is assumed that the the data is organised in a BIDS-esque format, such that the files are named: 
 
