@@ -9,11 +9,12 @@ Feature | Working | Tentative | In development | Not yet supported
 --- | --- | --- | --- | ---
 **Import:** FIL/UCL OPM Data | X | | |
 **Import:** Cerca Magnetics Data | | X | | 
+**Import:** Optitrak Data | | X | | 
 **Coreg:** FIL/UCL w/ Headcasts | X | | |
 **Coreg:** Cerca | | | | X
 **Preproc:** HFC ( $\ell =1$ )| | | X |
 **Preproc:** HFC ( $\ell >1$ )| | |  | X
- 
+**Pkg:** Install with pip | | | | X
 ### Usage - FIL BIDS format
 
 To use the import function, it is assumed that the the data is organised in a BIDS-esque format, such that the files are named: 
