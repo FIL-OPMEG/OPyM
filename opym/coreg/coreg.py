@@ -1,5 +1,7 @@
 #!/usr/bin/python
-
+"""
+@author: goneill
+"""
 
 from copy import deepcopy
 

@@ -1,3 +1,8 @@
+#!/usr/bin/python
+"""
+@author: goneill
+"""
+
 import json
 import numpy as np
 import os.path as op
