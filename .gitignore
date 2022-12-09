@@ -4,5 +4,4 @@ __pycache__/
 *$py.class
 *.fif
 
-nosync/*
-nosync/og_opym.py
+

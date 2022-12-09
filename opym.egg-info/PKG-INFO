@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: opym
+Version: 0.1.dev0
+Summary: Experimental code for OPM support in MNE-Python
+Author: Dept. of Imaging Neuroscience, UCL
+License-File: LICENSE

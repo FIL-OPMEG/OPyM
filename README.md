@@ -18,6 +18,24 @@ Feature | Working | Tentative | In development | Not yet supported
 
 \* = Homogenous Field Correction ([Tierney et al., 2021](https://doi.org/10.1016/j.neuroimage.2021.118484))
 
+### Installation
+
+To install into a (python >= 3.7) environment
+
+```bash
+git clone https://github.com/FIL-OPMEG/OPyM.git
+cd opym
+pip install . -r requirements.txt
+```
+
+If you plan on editing the code (for development purpoeses) run instead
+```bash
+git clone https://github.com/FIL-OPMEG/OPyM.git
+cd opym
+pip install -e . -r requirements.txt
+```
+
+
 ### Usage - FIL/UCL BIDS format
 
 This is specific to OPM data acquired at the [Wellcome Centre for Human Neuroimaging](https://www.fil.ion.ucl.ac.uk/).
