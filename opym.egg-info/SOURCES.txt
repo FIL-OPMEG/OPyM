@@ -1,9 +1,0 @@
-LICENSE
-README.md
-setup.py
-opym/__init__.py
-opym.egg-info/PKG-INFO
-opym.egg-info/SOURCES.txt
-opym.egg-info/dependency_links.txt
-opym.egg-info/not-zip-safe
-opym.egg-info/top_level.txt
