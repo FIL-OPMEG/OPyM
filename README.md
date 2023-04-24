@@ -7,13 +7,13 @@ A python library to read OPM data and perform some OPM-specific operations withi
 
 Feature | Available in [MNE-Python](https://github.com/mne-tools/mne-python)| Working | Tentative | In development | Not yet supported
 --- | --- | --- | --- | --- | ---
-**Import:** FIL/UCL OPM Data | | X | | |
+**Import:** FIL/UCL OPM Data | MNE Version 1.4 | X | | |
 **Import:** Cerca Magnetics Data | | | X | | 
 **Import:** Optitrak Data | | | X | | 
 **Coreg:** FIL/UCL w/ Scannercasts | | X | | |
 **Coreg:** Cerca | | | | | X
-**Preproc:** HFC* ( $\ell =1$ ) | | | | X |
-**Preproc:** HFC* ( $\ell >1$ )| | | |  | X
+**Preproc:** HFC* ( $\ell =1$ ) | MNE Version 1.4 | | | X |
+**Preproc:** HFC* ( $\ell >1$ )| MNE Version 1.4 | | |  | X
 **Pkg:** Install with pip | | X | | | 
 
 \* = Homogenous Field Correction ([Tierney et al., 2021](https://doi.org/10.1016/j.neuroimage.2021.118484))
